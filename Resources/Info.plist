@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleName</key>
+	<string>WisprLocal</string>
+	<key>CFBundleDisplayName</key>
+	<string>WisprLocal</string>
+	<key>CFBundleExecutable</key>
+	<string>WisprLocal</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.varunnayak.wisprlocal</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>26.0</string>
+	<key>LSUIElement</key>
+	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>WisprLocal records your voice while you hold the dictation key, and transcribes it on this device.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>WisprLocal transcribes your speech entirely on this device. No audio leaves your Mac.</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>Local push-to-talk dictation.</string>
+</dict>
+</plist>
