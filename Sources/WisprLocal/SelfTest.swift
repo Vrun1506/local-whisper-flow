@@ -10,7 +10,14 @@ import Foundation
 /// needing any TCC permission or a working hotkey.
 enum SelfTest {
 
-    static let defaultSample = "/opt/homebrew/share/whisper-cpp/jfk.wav"
+    /// Ships with Homebrew's whisper-cpp. Probed rather than hard-coded, since
+    /// the prefix is /opt/homebrew on Apple silicon and /usr/local on Intel.
+    static let defaultSample: String = {
+        let candidates = ["/opt/homebrew", "/usr/local"].map {
+            "\($0)/share/whisper-cpp/jfk.wav"
+        }
+        return candidates.first { FileManager.default.fileExists(atPath: $0) } ?? candidates[0]
+    }()
 
     /// Filler removal is pure string work, so it gets checked directly rather
     /// than through the microphone. The false-positive cases matter more than

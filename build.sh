@@ -45,13 +45,13 @@ fi
 BREW_PREFIX="$(brew --prefix 2>/dev/null || echo /opt/homebrew)"
 export HOMEBREW_PREFIX="$BREW_PREFIX"
 
+# libwhisper is linked into the binary (LC_LOAD_DYLIB, not weak), so it is
+# needed even by someone who only ever uses the Apple engine — without it the
+# app fails to launch at all rather than falling back.
 if [[ ! -f "$BREW_PREFIX/lib/libwhisper.dylib" ]]; then
-    echo "warning: whisper-cpp not found. Run: brew install whisper-cpp" >&2
-    if [[ "$(sw_vers -productVersion | cut -d. -f1)" -ge 26 ]]; then
-        echo "         (the Apple engine will still work without it)" >&2
-    else
-        echo "         (required — the Apple engine needs macOS 26 or later)" >&2
-    fi
+    echo "error: whisper-cpp not found. Run: brew install whisper-cpp" >&2
+    echo "       (required for the build to link, whichever engine you use)" >&2
+    exit 1
 fi
 
 # Build for whatever this Mac is, rather than assuming Apple silicon.

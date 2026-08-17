@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 enum WhisperModel {
@@ -10,6 +11,28 @@ enum WhisperModel {
         "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/\(fileName)")!
 
     static let approximateBytes: Int64 = 574_000_000
+
+    /// SHA-256 of the published file, as reported by Hugging Face's
+    /// `x-linked-etag` (which is the LFS object hash for this repo).
+    ///
+    /// Checked before the file is handed to whisper.cpp. TLS already rules out
+    /// a tampered response in transit; this covers the rest — a truncated
+    /// download, a corrupted disk write, a proxy that served something else, or
+    /// the upstream file being replaced. ggml parses this blob in C, so
+    /// "definitely the bytes we expected" is worth the few seconds it costs.
+    static let sha256 = "394221709cd5ad1f40c46e6031ca61bce88931e6e088c188294c6d5a55ffa7e2"
+
+    /// Streams the file rather than loading 574 MB into memory to hash it.
+    static func sha256OfFile(at url: URL) throws -> String {
+        let handle = try FileHandle(forReadingFrom: url)
+        defer { try? handle.close() }
+
+        var hasher = SHA256()
+        while let chunk = try handle.read(upToCount: 4 * 1024 * 1024), !chunk.isEmpty {
+            hasher.update(data: chunk)
+        }
+        return hasher.finalize().map { String(format: "%02x", $0) }.joined()
+    }
 }
 
 /// One-shot background download with progress, straight to its final path.
@@ -21,11 +44,16 @@ final class ModelDownloader: NSObject, URLSessionDownloadDelegate {
     enum DownloadError: LocalizedError {
         case badResponse(Int)
         case moveFailed(String)
+        case checksumMismatch(expected: String, actual: String)
 
         var errorDescription: String? {
             switch self {
             case let .badResponse(code): return "Model download failed (HTTP \(code))."
             case let .moveFailed(detail): return "Could not save the model: \(detail)"
+            case let .checksumMismatch(expected, actual):
+                return "Downloaded model does not match its expected checksum "
+                     + "(expected \(expected.prefix(12))…, got \(actual.prefix(12))…). "
+                     + "It has been discarded; try again."
             }
         }
     }
@@ -74,6 +102,15 @@ final class ModelDownloader: NSObject, URLSessionDownloadDelegate {
         }
 
         do {
+            // Verify before the file is anywhere the engine would load it from.
+            let actual = try WhisperModel.sha256OfFile(at: location)
+            guard actual == WhisperModel.sha256 else {
+                try? FileManager.default.removeItem(at: location)
+                finish(.failure(DownloadError.checksumMismatch(expected: WhisperModel.sha256,
+                                                              actual: actual)))
+                return
+            }
+
             // The temp file is deleted the moment this delegate returns, so the
             // move has to happen here rather than in the continuation.
             try? FileManager.default.removeItem(at: destination)

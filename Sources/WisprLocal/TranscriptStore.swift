@@ -54,5 +54,10 @@ final class TranscriptStore {
     private func save() {
         guard let data = try? JSONEncoder().encode(transcripts) else { return }
         try? data.write(to: fileURL, options: .atomic)
+        // Everything you have dictated sits in this file. Default 0644 would let
+        // any other account on the Mac read it; owner-only is the honest default
+        // for something this personal.
+        try? FileManager.default.setAttributes([.posixPermissions: 0o600],
+                                               ofItemAtPath: fileURL.path)
     }
 }
