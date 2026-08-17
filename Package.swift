@@ -11,9 +11,12 @@ let brewPrefix: String = {
 
 let package = Package(
     name: "WisprLocal",
-    // Ventura is the floor. The Whisper engine works throughout; the Apple
-    // engine is gated to macOS 26 at runtime, since SpeechAnalyzer ships there.
-    platforms: [.macOS(.v13)],
+    // Tahoe is the floor, because SpeechAnalyzer ships there and that is the
+    // only configuration this is tested on. The Apple engine keeps its runtime
+    // #available gate and Whisper still works without it, so lowering this is a
+    // one-line change for anyone who wants to try an older system — but it
+    // would have to move in lockstep with LSMinimumSystemVersion in Info.plist.
+    platforms: [.macOS(.v26)],
     targets: [
         .systemLibrary(name: "CWhisper", path: "Sources/CWhisper"),
 

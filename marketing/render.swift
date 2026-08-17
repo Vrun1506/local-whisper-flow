@@ -51,7 +51,7 @@ let scenes: [Scene] = [
 
     Scene(name: "06_cta", kicker: "FREE & OPEN SOURCE",
           headline: "Comment\nGITHUB",
-          sub: "macOS 13+  ·  Apple silicon & Intel", extra: .cta),
+          sub: "macOS 26+  ·  Apple silicon", extra: .cta),
 ]
 
 // MARK: Drawing helpers

@@ -16,11 +16,11 @@
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
-	<!-- Matches the package's deployment target. The Apple engine is gated to
-	     macOS 26 at runtime; on 13–15 the app runs Whisper only. Setting 26.0
-	     here would make LaunchServices refuse to open it on those systems. -->
+	<!-- Must match the deployment target in Package.swift. If this is ever
+	     raised above it, LaunchServices refuses to open the app on systems the
+	     build otherwise supports — with no error the user can act on. -->
 	<key>LSMinimumSystemVersion</key>
-	<string>13.0</string>
+	<string>26.0</string>
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>

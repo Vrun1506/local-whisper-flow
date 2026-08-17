@@ -4,29 +4,42 @@ Push-to-talk dictation for macOS. Hold **right ⌥**, speak, release — the tex
 lands wherever your cursor is. Runs entirely on your Mac, costs nothing, and
 sends no audio anywhere. A free, local alternative to Wispr Flow.
 
-![macOS](https://img.shields.io/badge/macOS-13%2B-black)
-![Apple silicon + Intel](https://img.shields.io/badge/arch-arm64%20%7C%20x86__64-black)
+![macOS](https://img.shields.io/badge/macOS-26%2B-black)
+![Apple silicon](https://img.shields.io/badge/arch-arm64-black)
 ![License](https://img.shields.io/badge/license-MIT-black)
+
+## What it needs from your Mac, and why
+
+It asks for three permissions, two of which are the ones malware wants. That
+deserves an answer before you install anything, not after:
+
+- **Microphone** — only while you hold the key. The audio engine is started on
+  press and stopped on release, so the orange recording dot appears exactly when
+  you are dictating and never otherwise.
+- **Input Monitoring** — to notice the key at all. The event tap subscribes to
+  `flagsChanged` (modifier keys) and nothing else, and is created `.listenOnly`,
+  so it cannot see the characters you type, in this or any other app. That's
+  `HotkeyMonitor.swift`, and it's about forty lines — read it.
+- **Accessibility** — to paste into the app you were already typing in. macOS
+  gates synthetic keystrokes behind this grant.
+
+No audio is ever written to disk, and nothing is sent anywhere. See
+[what leaves your Mac](#what-leaves-your-mac-and-what-lands-on-disk) for the
+full accounting.
 
 ## Requirements
 
 | | Minimum | Notes |
 |---|---|---|
-| macOS | **13 Ventura** | Whisper engine works throughout |
-| macOS | **26 Tahoe** | *additionally* unlocks the Apple engine (`SpeechAnalyzer`) |
-| Architecture | Apple silicon or Intel | Homebrew prefix is detected automatically |
+| macOS | **26 Tahoe** | `SpeechAnalyzer` is new in 26 and has no back-deployment |
+| Architecture | Apple silicon | Intel Macs on Tahoe are untested |
 | Toolchain | Swift 6.2 (Xcode 26 CLT) | `xcode-select --install` |
 | `whisper-cpp` | Homebrew | linked at build time, so it must be present even if you only use the Apple engine |
 | Disk | ~600 MB | only if you use the Whisper engine |
 
-On macOS 13–15 the app runs Whisper only, and the engine picker hides the Apple
-option rather than offering something that can't work. Apple's `SpeechAnalyzer`
-framework is new in macOS 26 and has no back-deployment.
-
-The package deployment target is macOS 13, but the manifest needs a Swift 6.2
-toolchain, which in practice means building on macOS 15 or later. Development
-happens on macOS 26; 13–15 is what the code targets rather than what it is
-tested against.
+The code still gates the Apple engine behind a runtime `#available` check and
+keeps Whisper working without it, so the engine picker degrades gracefully. That
+path just isn't tested on anything older, so 26 is what's claimed.
 
 ## Install
 
@@ -211,13 +224,41 @@ launch.
 Secure Input on (password fields, some terminals) — the HUD says so explicitly,
 and the text is on your clipboard and in Recent dictations either way.
 
-**Permissions reset themselves after a rebuild.** This is already solved: the
-build signs with a self-signed identity called `WisprLocal Dev`, which keeps the
-code signature stable so grants survive rebuilds. Ad-hoc signatures (`-s -`)
-bind grants to the binary's hash, which changes every single build.
+**Permissions reset themselves after a rebuild.** Expected, and harmless. macOS
+binds Accessibility and Input Monitoring to the binary's code hash, which
+changes on every build, so an ad-hoc signature (`-s -` — what `build.sh` uses by
+default) means re-granting them each time. Toggle WisprLocal off and on in both
+panes, or run `./build.sh --reset-permissions` to be prompted cleanly.
 
-If that identity is ever missing, `build.sh` silently falls back to ad-hoc and
-the problem returns. Recreate it with:
+If you rebuild often enough for that to grate, the optional section below fixes
+it permanently.
+
+**`brew upgrade` breaks launch with a dyld error.** The app links Homebrew's
+`libwhisper`/`libggml` by absolute path. Re-run `./build.sh` after upgrading.
+
+## Optional: a stable signing identity
+
+**Skip this unless rebuilds are annoying you.** Everything works without it.
+
+The re-granting happens because ad-hoc signatures have no stable identity for
+macOS to remember. Signing with a real certificate — even a self-signed one —
+keeps the designated requirement constant, so the grants stick across rebuilds.
+`build.sh` picks up an identity named `WisprLocal Dev` automatically if one
+exists, and falls back to ad-hoc if it doesn't.
+
+Creating one means adding a code-signing root to **your login keychain**. Be
+clear on what that is and isn't:
+
+- It is **not** a Gatekeeper bypass and does **not** affect notarization. Trust
+  is scoped to your login keychain and to the `codeSign` purpose only.
+- It does mean anything signed with that key is treated by your Mac as validly
+  signed. `-T /usr/bin/codesign` restricts use of the key to `codesign` itself;
+  don't add `-A`, which would let any process use it without a prompt.
+- The transport password below is throwaway — it protects the `.p12` for the
+  seconds between export and import, and the file is deleted afterwards.
+
+If that trade isn't one you want to make, don't make it. Re-granting two
+toggles after a rebuild is a perfectly reasonable alternative.
 
 ```bash
 openssl req -x509 -newkey rsa:2048 -sha256 -days 3650 -nodes \
@@ -236,16 +277,11 @@ rm wl.key wl.p12          # the private key now lives in the keychain
 Verify with `security find-identity -v -p codesigning`. Changing signing
 identity invalidates existing grants once, so re-add the app afterwards.
 
-Two things worth understanding before you run that. It marks a root as trusted
-for code signing **in your login keychain only** — it is not a system-wide
-Gatekeeper bypass, and notarization is unaffected. And `-T /usr/bin/codesign`
-scopes key access to `codesign` rather than to every process you run; don't add
-`-A`, which would drop that restriction. If you would rather not create the
-identity at all, the app still builds ad-hoc — you just re-grant the two
-permissions after each rebuild.
+To undo it later:
 
-**`brew upgrade` breaks launch with a dyld error.** The app links Homebrew's
-`libwhisper`/`libggml` by absolute path. Re-run `./build.sh` after upgrading.
+```bash
+security delete-certificate -c "WisprLocal Dev" ~/Library/Keychains/login.keychain-db
+```
 
 ## Layout
 

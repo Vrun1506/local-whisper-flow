@@ -2,9 +2,13 @@ import AVFoundation
 import CWhisper
 import Foundation
 
-/// Minimal mutex around a value. `Synchronization.Mutex` would be tidier but
-/// needs macOS 15; this keeps the deployment floor at Ventura. Locking happens
-/// inside a synchronous method, so it is safe to call from async code.
+/// Minimal mutex around a value. Locking happens inside a synchronous method,
+/// so it is safe to call from async code.
+///
+/// Written this way when the deployment floor was Ventura, which ruled out
+/// `Synchronization.Mutex` (macOS 15+). The floor is 26 now, so this could be
+/// swapped for `Mutex` — it just hasn't been, since it works and the swap would
+/// have to be undone by anyone lowering the floor again.
 final class Locked<Value>: @unchecked Sendable {
     private var value: Value
     private let lock = NSLock()
